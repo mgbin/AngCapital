@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="admin-panel narrow">
+    <div class="section-heading">
+        <span class="eyebrow">Admin Access</span>
+        <h1>后台登录</h1>
+    </div>
+    <form class="form-card" method="post" action="/admin/login">
+        {% if error %}
+        <div class="alert">{{ error }}</div>
+        {% endif %}
+        <label>
+            <span>用户名</span>
+            <input type="text" name="username" placeholder="admin" required>
+        </label>
+        <label>
+            <span>密码</span>
+            <input type="password" name="password" required>
+        </label>
+        <button class="button button-primary" type="submit">登录</button>
+    </form>
+</section>
+{% endblock %}

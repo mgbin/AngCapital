@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="admin-panel narrow">
+    <div class="section-heading">
+        <span class="eyebrow">User Access</span>
+        <h1>用户登录</h1>
+    </div>
+    <form class="form-card" method="post" action="/login">
+        {% if error %}
+        <div class="alert">{{ error }}</div>
+        {% endif %}
+        <label>
+            <span>邮箱</span>
+            <input type="email" name="email" placeholder="you@example.com" required>
+        </label>
+        <label>
+            <span>密码</span>
+            <input type="password" name="password" required>
+        </label>
+        <button class="button button-primary" type="submit">登录</button>
+    </form>
+    <p class="form-hint">还没有账号？<a class="text-link" href="/register">立即注册</a></p>
+</section>
+{% endblock %}

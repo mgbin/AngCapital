@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="admin-panel">
+    <div class="admin-toolbar">
+        <div class="section-heading">
+            <span class="eyebrow">Report Admin</span>
+            <h1>研报列表</h1>
+        </div>
+        <a class="button button-primary" href="/admin/reports/new">新增研报</a>
+    </div>
+
+    <div class="form-card">
+        {% if reports %}
+        <div class="report-admin-table">
+            <div class="report-admin-head report-admin-row">
+                <span>标题</span>
+                <span>标签</span>
+                <span>发布日期</span>
+                <span>状态</span>
+                <span>操作</span>
+            </div>
+            {% for report in reports %}
+            <div class="report-admin-row">
+                <div class="report-admin-title">
+                    <strong>{{ report.title }}</strong>
+                    <p>{{ report.summary }}</p>
+                </div>
+                <span>{{ report.category }}</span>
+                <span>{{ report.publish_date.strftime("%Y-%m-%d") }}</span>
+                <span>
+                    {% if report.status == "published" %}
+                    <span class="status-badge status-published">已发布</span>
+                    {% else %}
+                    <span class="status-badge status-draft">草稿</span>
+                    {% endif %}
+                </span>
+                <div class="report-admin-actions">
+                    <form method="post" action="/admin/reports/{{ report.id }}/status" class="status-form">
+                        <select name="status">
+                            <option value="draft" {% if report.status == "draft" %}selected{% endif %}>草稿</option>
+                            <option value="published" {% if report.status == "published" %}selected{% endif %}>已发布</option>
+                        </select>
+                        <button class="button button-secondary" type="submit">保存</button>
+                    </form>
+                    <a class="text-link" href="/admin/reports/{{ report.id }}/edit">编辑</a>
+                    {% if report.status == "published" %}
+                    <a class="text-link" href="/reports/{{ report.slug }}" target="_blank" rel="noopener noreferrer">查看</a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <p>还没有研报，先新增第一篇吧。</p>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero">
+    <div class="hero-copy">
+        <h1>寻找从Nanometer到Angstrom的投资机会</h1>
+    </div>
+    {% if featured %}
+    <article class="featured-card">
+        <div class="chip-group">
+            {% for tag in report_tags(featured.category) %}
+            <span class="chip">{{ tag }}</span>
+            {% endfor %}
+        </div>
+        <h2>{{ featured.title }}</h2>
+        <p>{{ featured.summary }}</p>
+        <div class="meta-row">
+            <span>{{ featured.publish_date.strftime("%Y-%m-%d") }}</span>
+        </div>
+        <a class="text-link" href="/reports/{{ featured.slug }}">阅读研报</a>
+    </article>
+    {% endif %}
+</section>
+
+<section class="reports-section" id="reports">
+    <div class="section-heading">
+        <span class="eyebrow">Latest Reports</span>
+        {% if search_query %}
+        <h2>搜索结果</h2>
+        {% else %}
+        <h2>最新发布</h2>
+        {% endif %}
+    </div>
+    <div class="report-grid">
+        {% for report in reports %}
+        <article class="featured-card">
+            <div class="chip-group">
+                {% for tag in report_tags(report.category) %}
+                <span class="chip">{{ tag }}</span>
+                {% endfor %}
+            </div>
+            <h2>{{ report.title }}</h2>
+            <p>{{ report.summary }}</p>
+            <div class="meta-row">
+                <span>{{ report.publish_date.strftime("%Y-%m-%d") }}</span>
+            </div>
+            <a class="text-link" href="/reports/{{ report.slug }}">阅读研报</a>
+        </article>
+        {% else %}
+        <div class="empty-state">
+            {% if search_query %}
+            <p>没有找到与“{{ search_query }}”相关的研报。</p>
+            {% else %}
+            <p>还没有发布研报，请先进入后台新增内容。</p>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

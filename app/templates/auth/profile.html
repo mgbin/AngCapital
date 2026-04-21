@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="admin-panel narrow">
+    <div class="section-heading">
+        <span class="eyebrow">Account</span>
+        <h1>个人页面</h1>
+    </div>
+
+    <div class="form-card">
+        <div class="profile-row">
+            <span class="profile-label">用户名</span>
+            <strong>{{ profile_user.username }}</strong>
+        </div>
+        <div class="profile-row">
+            <span class="profile-label">邮箱</span>
+            <strong>{{ profile_user.email }}</strong>
+        </div>
+        <div class="profile-row">
+            <span class="profile-label">等级</span>
+            <strong>{{ profile_user.level }}</strong>
+        </div>
+        <div class="profile-actions">
+            <a class="button button-secondary" href="/">返回首页</a>
+            <form method="post" action="/logout" class="nav-inline-form">
+                <button class="button button-primary" type="submit">退出登录</button>
+            </form>
+        </div>
+    </div>
+</section>
+{% endblock %}

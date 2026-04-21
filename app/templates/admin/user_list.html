@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="admin-panel">
+    <div class="admin-toolbar">
+        <div class="section-heading">
+            <span class="eyebrow">User Admin</span>
+            <h1>用户管理</h1>
+        </div>
+    </div>
+
+    <div class="form-card">
+        {% if users %}
+        <div class="report-admin-table">
+            <div class="report-admin-head report-admin-row user-admin-row">
+                <span>用户名</span>
+                <span>邮箱</span>
+                <span>等级</span>
+                <span>注册时间</span>
+                <span>状态</span>
+                <span>操作</span>
+            </div>
+            {% for user in users %}
+            <div class="report-admin-row user-admin-row">
+                <div class="report-admin-title">
+                    <strong>{{ user.username }}</strong>
+                </div>
+                <span>{{ user.email }}</span>
+                <span><span class="status-badge level-badge">{{ user.level }}</span></span>
+                <span>{{ user.created_at.strftime("%Y-%m-%d %H:%M") }}</span>
+                <span>
+                    {% if user.is_active %}
+                    <span class="status-badge status-published">启用中</span>
+                    {% else %}
+                    <span class="status-badge status-draft">已停用</span>
+                    {% endif %}
+                </span>
+                <div class="report-admin-actions">
+                    <form method="post" action="/admin/users/{{ user.id }}/status" class="status-form">
+                        <select name="level">
+                            <option value="User" {% if user.level == "User" %}selected{% endif %}>User</option>
+                            <option value="VIP1" {% if user.level == "VIP1" %}selected{% endif %}>VIP1</option>
+                            <option value="VIP2" {% if user.level == "VIP2" %}selected{% endif %}>VIP2</option>
+                            <option value="VIP3" {% if user.level == "VIP3" %}selected{% endif %}>VIP3</option>
+                        </select>
+                        <select name="is_active">
+                            <option value="true" {% if user.is_active %}selected{% endif %}>启用</option>
+                            <option value="false" {% if not user.is_active %}selected{% endif %}>停用</option>
+                        </select>
+                        <button class="button button-secondary" type="submit">保存</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <p>当前还没有注册用户。</p>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

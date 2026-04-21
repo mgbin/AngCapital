@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="admin-panel">
+    <div class="admin-toolbar">
+        <div class="section-heading">
+            <span class="eyebrow">Report Admin</span>
+            <h1>编辑研报</h1>
+        </div>
+        <a class="button button-secondary" href="/admin/reports">返回列表</a>
+    </div>
+    <form class="form-card large" method="post" action="/admin/reports/{{ report.id }}/edit" enctype="multipart/form-data">
+        <div class="form-grid">
+            <label>
+                <span>标题</span>
+                <input type="text" name="title" value="{{ report.title }}" required>
+            </label>
+            <label>
+                <span>标签</span>
+                <input type="text" name="category" value="{{ report.category }}" placeholder="例如：AI Strategy, Semiconductor, Macro" required>
+            </label>
+            <label>
+                <span>发布日期</span>
+                <input type="date" name="publish_date" value="{{ report.publish_date.strftime('%Y-%m-%d') }}" required>
+            </label>
+            <label>
+                <span>研报状态</span>
+                <select name="status" required>
+                    <option value="draft" {% if report.status == "draft" %}selected{% endif %}>草稿</option>
+                    <option value="published" {% if report.status == "published" %}selected{% endif %}>已发布</option>
+                </select>
+            </label>
+            <label>
+                <span>替换 PDF</span>
+                <input type="file" name="pdf_file" accept="application/pdf,.pdf">
+            </label>
+        </div>
+        <div class="current-file-hint">
+            <span>当前 PDF：</span>
+            {% if report.pdf_url %}
+            <a class="text-link" href="{{ report.pdf_url }}" target="_blank" rel="noopener noreferrer">查看当前文件</a>
+            {% else %}
+            <span>暂无 PDF</span>
+            {% endif %}
+        </div>
+        <label>
+            <span>摘要</span>
+            <textarea name="summary" rows="4" required placeholder="用于列表页和详情页顶部的简短摘要">{{ report.summary }}</textarea>
+        </label>
+        <div class="form-actions">
+            <button class="button button-primary" type="submit">保存修改</button>
+        </div>
+    </form>
+</section>
+{% endblock %}
