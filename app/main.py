@@ -6,9 +6,11 @@ from sqlalchemy import inspect, text
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.config import get_settings
-from app.crud import seed_reports
+from app.crud import create_admin_user, list_all_admin_users, seed_reports
 from app.database import Base, SessionLocal, engine
 from app.routers.web import router as web_router
+from app.schemas import AdminUserCreate
+from app.security import hash_password
 
 
 settings = get_settings()
@@ -60,11 +62,25 @@ def ensure_frontend_user_schema() -> None:
         )
 
 
+def ensure_default_admin_user() -> None:
+    with SessionLocal() as db:
+        if list_all_admin_users(db):
+            return
+        create_admin_user(
+            db,
+            AdminUserCreate(
+                username=settings.admin_username,
+                password_hash=hash_password(settings.admin_password),
+            ),
+        )
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     Base.metadata.create_all(bind=engine)
     ensure_report_schema()
     ensure_frontend_user_schema()
+    ensure_default_admin_user()
     with SessionLocal() as db:
         seed_reports(db)
     yield

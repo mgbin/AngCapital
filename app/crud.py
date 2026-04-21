@@ -4,8 +4,8 @@ from typing import Optional
 from sqlalchemy import desc, or_, select
 from sqlalchemy.orm import Session
 
-from app.models import FrontendUser, ResearchReport
-from app.schemas import FrontendUserCreate, ReportCreate
+from app.models import AdminUser, FrontendUser, ResearchReport
+from app.schemas import AdminUserCreate, FrontendUserCreate, ReportCreate
 
 
 def list_reports(db: Session, keyword: str = "") -> list[ResearchReport]:
@@ -139,6 +139,37 @@ def create_frontend_user(db: Session, payload: FrontendUserCreate) -> FrontendUs
     db.commit()
     db.refresh(user)
     return user
+
+
+def list_all_admin_users(db: Session) -> list[AdminUser]:
+    stmt = select(AdminUser).order_by(desc(AdminUser.created_at), desc(AdminUser.id))
+    return list(db.scalars(stmt).all())
+
+
+def get_admin_user_by_id(db: Session, admin_user_id: int) -> Optional[AdminUser]:
+    stmt = select(AdminUser).where(AdminUser.id == admin_user_id)
+    return db.scalars(stmt).first()
+
+
+def get_admin_user_by_username(db: Session, username: str) -> Optional[AdminUser]:
+    stmt = select(AdminUser).where(AdminUser.username == username)
+    return db.scalars(stmt).first()
+
+
+def create_admin_user(db: Session, payload: AdminUserCreate) -> AdminUser:
+    admin_user = AdminUser(**payload.model_dump())
+    db.add(admin_user)
+    db.commit()
+    db.refresh(admin_user)
+    return admin_user
+
+
+def update_admin_user_password(db: Session, admin_user: AdminUser, password_hash: str) -> AdminUser:
+    admin_user.password_hash = password_hash
+    db.add(admin_user)
+    db.commit()
+    db.refresh(admin_user)
+    return admin_user
 
 
 def seed_reports(db: Session) -> None:

@@ -1,8 +1,5 @@
 from datetime import date
-import hashlib
-import hmac
 import os
-import secrets
 import uuid
 from typing import Any, Dict, Optional
 from urllib.parse import quote
@@ -17,6 +14,8 @@ from app.crud import (
     create_frontend_user,
     create_report,
     featured_report,
+    get_admin_user_by_id,
+    get_admin_user_by_username,
     get_report_by_id,
     get_report_by_slug,
     get_user_by_email,
@@ -26,12 +25,14 @@ from app.crud import (
     list_all_users,
     list_reports,
     update_report,
+    update_admin_user_password,
     update_report_status,
     update_user_admin_fields,
 )
 from app.database import get_db
 from app.dependencies import is_logged_in, is_user_logged_in
 from app.schemas import FrontendUserCreate, ReportCreate
+from app.security import hash_password, verify_password
 
 
 router = APIRouter()
@@ -45,21 +46,6 @@ def report_tags(raw_value: str) -> list[str]:
 
 
 templates.env.globals["report_tags"] = report_tags
-
-
-def hash_password(password: str) -> str:
-    salt = secrets.token_hex(16)
-    derived_key = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), 100000)
-    return f"{salt}${derived_key.hex()}"
-
-
-def verify_password(password: str, stored_hash: str) -> bool:
-    try:
-        salt, password_hash = stored_hash.split("$", 1)
-    except ValueError:
-        return False
-    derived_key = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), 100000)
-    return hmac.compare_digest(derived_key.hex(), password_hash)
 
 
 def slugify_title(title: str) -> str:
@@ -93,6 +79,17 @@ def get_current_frontend_user(request: Request, db: Session) -> Optional[Dict[st
     return {"id": user.id, "username": user.username, "email": user.email, "level": user.level}
 
 
+def get_current_admin_user(request: Request, db: Session) -> Optional[Dict[str, Any]]:
+    admin_user_id = request.session.get("admin_user_id")
+    if not admin_user_id:
+        return None
+    admin_user = get_admin_user_by_id(db, int(admin_user_id))
+    if not admin_user or not admin_user.is_active:
+        request.session.pop("admin_user_id", None)
+        return None
+    return {"id": admin_user.id, "username": admin_user.username}
+
+
 def render_template(
     request: Request,
     template_name: str,
@@ -101,10 +98,12 @@ def render_template(
     status_code: int = status.HTTP_200_OK,
 ):
     frontend_user = get_current_frontend_user(request, db) if db else None
+    admin_user = get_current_admin_user(request, db) if db else None
     merged_context = {
         "request": request,
         "settings": settings,
         "frontend_user": frontend_user,
+        "admin_user": admin_user,
         "nav_mode": "site",
         **context,
     }
@@ -288,13 +287,14 @@ def frontend_profile(request: Request, db: Session = Depends(get_db)):
 
 
 @router.get("/admin/login", response_class=HTMLResponse)
-def admin_login_page(request: Request):
-    if is_logged_in(request):
-        return RedirectResponse(url="/admin/reports/new", status_code=status.HTTP_303_SEE_OTHER)
+def admin_login_page(request: Request, db: Session = Depends(get_db)):
+    if get_current_admin_user(request, db):
+        return RedirectResponse(url="/admin/reports", status_code=status.HTTP_303_SEE_OTHER)
     return render_template(
         request,
         "admin/login.html",
         {"page_title": "Admin Login", "error": None, "nav_mode": "admin_auth"},
+        db=db,
     )
 
 
@@ -303,14 +303,17 @@ def admin_login(
     request: Request,
     username: str = Form(...),
     password: str = Form(...),
+    db: Session = Depends(get_db),
 ):
-    if username == settings.admin_username and password == settings.admin_password:
-        request.session["admin_authenticated"] = True
+    admin_user = get_admin_user_by_username(db, username.strip())
+    if admin_user and admin_user.is_active and verify_password(password, admin_user.password_hash):
+        request.session["admin_user_id"] = admin_user.id
         return RedirectResponse(url="/admin/reports", status_code=status.HTTP_303_SEE_OTHER)
     return render_template(
         request,
         "admin/login.html",
         {"page_title": "Admin Login", "error": "账号或密码错误", "nav_mode": "admin_auth"},
+        db=db,
         status_code=status.HTTP_401_UNAUTHORIZED,
     )
 
@@ -337,6 +340,24 @@ def admin_users_page(request: Request, db: Session = Depends(get_db)):
         request,
         "admin/user_list.html",
         {"page_title": "Users", "users": users, "nav_mode": "admin"},
+        db=db,
+    )
+
+
+@router.get("/admin/password", response_class=HTMLResponse)
+def admin_password_page(request: Request, db: Session = Depends(get_db)):
+    admin_user = get_current_admin_user(request, db)
+    if not admin_user:
+        return RedirectResponse(url="/admin/login", status_code=status.HTTP_303_SEE_OTHER)
+    return render_template(
+        request,
+        "admin/change_password.html",
+        {
+            "page_title": "Change Password",
+            "error": None,
+            "success": None,
+            "nav_mode": "admin",
+        },
         db=db,
     )
 
@@ -477,6 +498,77 @@ def admin_update_user_status(
     return RedirectResponse(url="/admin/users", status_code=status.HTTP_303_SEE_OTHER)
 
 
+@router.post("/admin/password", response_class=HTMLResponse)
+def admin_change_password(
+    request: Request,
+    current_password: str = Form(...),
+    new_password: str = Form(...),
+    confirm_password: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    admin_user_context = get_current_admin_user(request, db)
+    if not admin_user_context:
+        return RedirectResponse(url="/admin/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    admin_user = get_admin_user_by_id(db, admin_user_context["id"])
+    if not admin_user or not admin_user.is_active:
+        request.session.pop("admin_user_id", None)
+        return RedirectResponse(url="/admin/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    if not verify_password(current_password, admin_user.password_hash):
+        return render_template(
+            request,
+            "admin/change_password.html",
+            {
+                "page_title": "Change Password",
+                "error": "当前密码错误",
+                "success": None,
+                "nav_mode": "admin",
+            },
+            db=db,
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
+    if len(new_password) < 6:
+        return render_template(
+            request,
+            "admin/change_password.html",
+            {
+                "page_title": "Change Password",
+                "error": "新密码至少需要 6 位",
+                "success": None,
+                "nav_mode": "admin",
+            },
+            db=db,
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
+    if new_password != confirm_password:
+        return render_template(
+            request,
+            "admin/change_password.html",
+            {
+                "page_title": "Change Password",
+                "error": "两次输入的新密码不一致",
+                "success": None,
+                "nav_mode": "admin",
+            },
+            db=db,
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
+
+    update_admin_user_password(db, admin_user, hash_password(new_password))
+    return render_template(
+        request,
+        "admin/change_password.html",
+        {
+            "page_title": "Change Password",
+            "error": None,
+            "success": "管理员密码已更新",
+            "nav_mode": "admin",
+        },
+        db=db,
+    )
+
+
 @router.post("/admin/reports/{report_id}/status")
 def admin_update_report_status(
     report_id: int,
@@ -500,4 +592,5 @@ def admin_update_report_status(
 @router.post("/admin/logout")
 def admin_logout(request: Request):
     request.session.pop("admin_authenticated", None)
+    request.session.pop("admin_user_id", None)
     return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)

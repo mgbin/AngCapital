@@ -24,3 +24,8 @@ class FrontendUserCreate(BaseModel):
     email: str
     password_hash: str
     level: str = "User"
+
+
+class AdminUserCreate(BaseModel):
+    username: str
+    password_hash: str

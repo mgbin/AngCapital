@@ -650,6 +650,11 @@ textarea {
     margin-bottom: 16px;
 }
 
+.alert-success {
+    background: rgba(58, 122, 84, 0.14);
+    color: #245839;
+}
+
 .form-hint {
     margin: 14px 4px 0;
     color: var(--muted);
